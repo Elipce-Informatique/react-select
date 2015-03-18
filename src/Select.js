@@ -27,6 +27,8 @@ var Select = React.createClass({
 		searchPromptText: React.PropTypes.string,  // label to prompt for search input
 		name: React.PropTypes.string,              // field name, for hidden <input /> tag
 		onChange: React.PropTypes.func,            // onChange handler: function(newValue) {}
+		onFocus: React.PropTypes.func,             // onFocus handler: function(event) {}
+		onBlur: React.PropTypes.func,              // onBlur handler: function(event) {}
 		className: React.PropTypes.string,         // className for the outer element
 		filterOption: React.PropTypes.func,        // method to filter a single option: function(option, filterString)
 		filterOptions: React.PropTypes.func,       // method to filter the options array: function([options], filterString, [values])
@@ -251,12 +253,16 @@ var Select = React.createClass({
 		}
 	},
 
-	handleInputFocus: function() {
+	handleInputFocus: function(event) {
 		this.setState({
 			isFocused: true,
 			isOpen: this.state.isOpen || this._openAfterFocus
 		});
 		this._openAfterFocus = false;
+		
+		if (this.props.onFocus) {
+			this.props.onFocus(event);
+		}
 	},
 
 	handleInputBlur: function(event) {
@@ -267,6 +273,10 @@ var Select = React.createClass({
 				isFocused: false
 			});
 		}.bind(this), 50);
+		
+		if (this.props.onBlur) {
+			this.props.onBlur(event);
+		}
 	},
 
 	handleKeyDown: function(event) {
@@ -350,6 +360,8 @@ var Select = React.createClass({
 
 	loadAsyncOptions: function(input, state) {
 
+		var thisRequestId = this._currentRequestId = requestId++;
+
 		for (var i = 0; i <= input.length; i++) {
 			var cacheKey = input.slice(0, i);
 			if (this._optionsCache[cacheKey] && (input === cacheKey || this._optionsCache[cacheKey].complete)) {
@@ -361,8 +373,6 @@ var Select = React.createClass({
 				return;
 			}
 		}
-
-		var thisRequestId = this._currentRequestId = requestId++;
 
 		this.props.asyncOptions(input, function(err, data) {
 
@@ -396,12 +406,13 @@ var Select = React.createClass({
 			var filterOption = function(op) {
 				if (this.props.multi && _.contains(exclude, op.value)) return false;
 				if (this.props.filterOption) return this.props.filterOption.call(this, op, filterValue);
+				var valueTest = String(op.value), labelTest = String(op.label);
 				return !filterValue || (this.props.matchPos === 'start') ? (
-					(this.props.matchProp !== 'label' && op.value.toLowerCase().substr(0, filterValue.length) === filterValue) ||
-					(this.props.matchProp !== 'value' && op.label.toLowerCase().substr(0, filterValue.length) === filterValue)
+					(this.props.matchProp !== 'label' && valueTest.toLowerCase().substr(0, filterValue.length) === filterValue) ||
+					(this.props.matchProp !== 'value' && labelTest.toLowerCase().substr(0, filterValue.length) === filterValue)
 				) : (
-					(this.props.matchProp !== 'label' && op.value.toLowerCase().indexOf(filterValue.toLowerCase()) >= 0) ||
-					(this.props.matchProp !== 'value' && op.label.toLowerCase().indexOf(filterValue.toLowerCase()) >= 0)
+					(this.props.matchProp !== 'label' && valueTest.toLowerCase().indexOf(filterValue.toLowerCase()) >= 0) ||
+					(this.props.matchProp !== 'value' && labelTest.toLowerCase().indexOf(filterValue.toLowerCase()) >= 0)
 				);
 			};
 			return _.filter(options, filterOption, this);
